@@ -1,0 +1,11 @@
+product_id,product_name,category,price
+101,Laptop Pro,Computers,1200.00
+102,Wireless Mouse,Accessories,25.00
+103,Mechanical Keyboard,Accessories,85.00
+104,HD Monitor,Monitors,350.00
+105,USB-C Hub,Accessories,45.00
+106,Gaming Laptop,Computers,1800.00
+107,Webcam Pro,Accessories,120.00
+108,4K Monitor,Monitors,550.00
+109,Wireless Headphones,Audio,200.00
+110,Portable SSD,Storage,150.00

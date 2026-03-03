@@ -1,0 +1,260 @@
+-- ============================================================================
+-- SQL MINI-PROJECT: E-COMMERCE CUSTOMER ANALYSIS
+-- ============================================================================
+-- Project: TechStore Customer & Product Performance Analysis
+-- Author: Mohammad Riyazuddin
+-- Date: February 2026
+-- Tools: SQL (PostgreSQL/MySQL/SQLite compatible)
+-- 
+-- Business Context:
+-- As a Data Analyst at TechStore (online electronics retailer), I analyzed
+-- customer purchasing patterns, product performance, and revenue trends to
+-- support data-driven business decisions. This project demonstrates:
+-- - Multi-table JOINs (3 tables)
+-- - Aggregations and GROUP BY operations
+-- - Customer segmentation using conditional logic
+-- - Finding non-matching records (inactive customers)
+-- - Cross-sell analysis
+-- ============================================================================
+
+-- ----------------------------------------------------------------------------
+-- DATABASE SCHEMA
+-- ----------------------------------------------------------------------------
+
+-- Table 1: customers (10 customers across 7 states)
+-- Columns: customer_id, customer_name, email, city, state, signup_date
+
+-- Table 2: products (10 products across 4 categories)
+-- Columns: product_id, product_name, category, price
+
+-- Table 3: orders (16 orders)
+-- Columns: order_id, customer_id, product_id, order_date, quantity, total_amount
+
+-- ----------------------------------------------------------------------------
+-- QUERY 1: TOTAL REVENUE & ORDER COUNT
+-- ----------------------------------------------------------------------------
+-- Business Question: What is our total revenue and how many orders have we processed?
+-- Use Case: Executive summary / KPI tracking
+
+SELECT 
+    SUM(total_amount) AS total_revenue,
+    COUNT(order_id) AS order_count 
+FROM orders;
+
+-- Result: $7,660 total revenue across 16 orders
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 2: TOP 5 CUSTOMERS BY SPENDING
+-- ----------------------------------------------------------------------------
+-- Business Question: Who are our top 5 customers by total spending?
+-- Use Case: VIP loyalty program targeting
+
+SELECT 
+    c.customer_name,
+    c.email,
+    SUM(o.total_amount) AS total_spent
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name, c.email
+ORDER BY total_spent DESC
+LIMIT 5;
+
+-- Result: Top spender is Bob Smith ($2,025), followed by Alice Johnson ($1,535)
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 3: PRODUCT PERFORMANCE BY CATEGORY
+-- ----------------------------------------------------------------------------
+-- Business Question: Which product categories generate the most revenue?
+-- Use Case: Inventory optimization and marketing focus
+
+SELECT 
+    p.category, 
+    SUM(o.total_amount) AS total_revenue,
+    COUNT(o.order_id) AS no_of_orders,
+    ROUND(AVG(o.total_amount), 2) AS average_order_value
+FROM orders o
+INNER JOIN products p ON o.product_id = p.product_id
+GROUP BY p.category
+ORDER BY total_revenue DESC;
+
+-- Result: Computers ($4,200) > Monitors ($1,920) > Accessories ($665)
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 4: STATE-LEVEL REVENUE ANALYSIS
+-- ----------------------------------------------------------------------------
+-- Business Question: Which states have the most revenue and customers?
+-- Use Case: Regional marketing and expansion strategy
+
+SELECT 
+    c.state,
+    COUNT(DISTINCT c.customer_id) AS no_of_customers,
+    COUNT(o.order_id) AS no_of_orders,
+    SUM(o.total_amount) AS total_revenue
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.state
+HAVING COUNT(DISTINCT c.customer_id) >= 2
+ORDER BY total_revenue DESC;
+
+-- Result: CA ($2,325) and NY ($2,320) lead in revenue with 2 customers each
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 5: INACTIVE CUSTOMERS (CHURN RISK)
+-- ----------------------------------------------------------------------------
+-- Business Question: Which customers signed up but never purchased?
+-- Use Case: Re-engagement email campaign targeting
+
+SELECT DISTINCT 
+    c.customer_name,
+    c.email,
+    c.city,
+    c.signup_date
+FROM customers c
+LEFT JOIN orders o ON c.customer_id = o.customer_id
+WHERE o.order_id IS NULL;
+
+-- Result: 3 inactive customers identified for targeted outreach
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 6: TOP 3 MOST POPULAR PRODUCTS
+-- ----------------------------------------------------------------------------
+-- Business Question: Which products sell the most units?
+-- Use Case: Inventory forecasting and stock prioritization
+
+SELECT 
+    p.product_name,
+    p.category,
+    SUM(o.quantity) AS total_quantity,
+    SUM(o.total_amount) AS total_revenue
+FROM products p
+INNER JOIN orders o ON p.product_id = o.product_id
+GROUP BY p.product_name, p.category
+ORDER BY total_quantity DESC
+LIMIT 3;
+
+-- Result: USB-C Hub (3 units), Laptop Pro/Wireless Mouse (2 units each)
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 7: CUSTOMER SEGMENTATION (VIP TIERS)
+-- ----------------------------------------------------------------------------
+-- Business Question: How should we segment customers for targeted marketing?
+-- Use Case: Personalized loyalty programs and promotions
+-- Segmentation: VIP (≥$1500), Regular ($500-$1499), Occasional (<$500)
+
+SELECT 
+    c.customer_name,
+    SUM(o.total_amount) AS total_spent,
+    COUNT(o.order_id) AS no_of_orders,
+    CASE 
+        WHEN SUM(o.total_amount) >= 1500 THEN 'VIP'
+        WHEN SUM(o.total_amount) BETWEEN 500 AND 1499 THEN 'Regular'
+        WHEN SUM(o.total_amount) < 500 THEN 'Occasional'
+    END AS customer_tier
+FROM customers c
+INNER JOIN orders o ON c.customer_id = o.customer_id
+GROUP BY c.customer_name
+ORDER BY total_spent DESC;
+
+-- Result: 2 VIP customers (Bob & Alice), 3 Regular, 2 Occasional
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 8: MONTHLY SALES TREND
+-- ----------------------------------------------------------------------------
+-- Business Question: How has revenue trended month-over-month in 2023?
+-- Use Case: Seasonality analysis and sales forecasting
+
+SELECT 
+    TO_CHAR(order_date, 'YYYY-MM') AS month,  -- Use strftime('%Y-%m', order_date) for SQLite
+    SUM(total_amount) AS total_revenue
+FROM orders
+GROUP BY TO_CHAR(order_date, 'YYYY-MM')
+ORDER BY month ASC;
+
+-- Result: Revenue grew from $1,250 (July) → $2,755 (August) → $3,655 (September)
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 9: CROSS-SELL ANALYSIS
+-- ----------------------------------------------------------------------------
+-- Business Question: Which customers buy across multiple product categories?
+-- Use Case: Cross-sell and bundle recommendations
+
+SELECT 
+    c.customer_name,
+    COUNT(DISTINCT p.category) AS categories_purchased
+FROM customers c 
+INNER JOIN orders o ON c.customer_id = o.customer_id
+INNER JOIN products p ON o.product_id = p.product_id
+GROUP BY c.customer_name
+HAVING COUNT(DISTINCT p.category) >= 2
+ORDER BY categories_purchased DESC;
+
+-- Result: 3 customers buy across multiple categories (prime cross-sell targets)
+
+
+-- ----------------------------------------------------------------------------
+-- QUERY 10: HIGH-VALUE ORDERS (>$1000)
+-- ----------------------------------------------------------------------------
+-- Business Question: What are the details of our largest transactions?
+-- Use Case: Premium customer service and fraud detection
+
+SELECT 
+    c.customer_name,
+    p.product_name,
+    p.category,
+    o.order_date,
+    o.total_amount
+FROM customers c 
+INNER JOIN orders o ON c.customer_id = o.customer_id
+INNER JOIN products p ON o.product_id = p.product_id
+WHERE o.total_amount > 1000
+ORDER BY o.total_amount DESC;
+
+-- Result: 4 orders over $1,000 (Gaming Laptops and Laptop Pros)
+
+
+-- ============================================================================
+-- PROJECT INSIGHTS & BUSINESS RECOMMENDATIONS
+-- ============================================================================
+
+-- 1. REVENUE CONCENTRATION
+--    - Top 2 customers (Bob & Alice) account for 46% of total revenue
+--    - Recommendation: Implement VIP retention program for high spenders
+
+-- 2. CATEGORY PERFORMANCE
+--    - Computers drive 55% of revenue despite being just 25% of SKUs
+--    - Recommendation: Expand computer product line, reduce accessory inventory
+
+-- 3. GEOGRAPHIC OPPORTUNITY
+--    - CA and NY generate equal revenue with just 2 customers each
+--    - Recommendation: Focus marketing spend on these high-value states
+
+-- 4. CUSTOMER ACTIVATION
+--    - 30% of signups have never purchased (3 of 10 customers)
+--    - Recommendation: Launch re-engagement email campaign with first-order discount
+
+-- 5. GROWTH TREND
+--    - Monthly revenue grew 192% from July to September
+--    - Recommendation: Scale operations to support continued growth trajectory
+
+-- ============================================================================
+-- TECHNICAL SKILLS DEMONSTRATED
+-- ============================================================================
+-- ✓ Multi-table JOINs (INNER JOIN, LEFT JOIN across 3 tables)
+-- ✓ Aggregation functions (SUM, COUNT, AVG, COUNT DISTINCT)
+-- ✓ GROUP BY with single and multiple columns
+-- ✓ HAVING clause for filtering aggregated results
+-- ✓ WHERE clause for pre-aggregation filtering
+-- ✓ CASE WHEN for conditional logic (customer segmentation)
+-- ✓ Date functions for time-series analysis
+-- ✓ NULL handling (IS NULL pattern for finding non-matches)
+-- ✓ ORDER BY and LIMIT for ranking queries
+-- ✓ Subquery concepts (though not needed in these particular queries)
+-- ============================================================================

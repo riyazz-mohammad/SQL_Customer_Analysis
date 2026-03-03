@@ -1,0 +1,49 @@
+-- ============================================================================
+-- DATABASE SETUP: E-Commerce Customer Analysis
+-- ============================================================================
+-- This script creates the database schema for the TechStore analysis project
+-- ============================================================================
+
+-- Drop tables if they exist (for clean setup)
+DROP TABLE IF EXISTS orders;
+DROP TABLE IF EXISTS products;
+DROP TABLE IF EXISTS customers;
+
+-- ============================================================================
+-- TABLE 1: CUSTOMERS
+-- ============================================================================
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    customer_name VARCHAR(100) NOT NULL,
+    email VARCHAR(100) UNIQUE NOT NULL,
+    city VARCHAR(50),
+    state VARCHAR(2),
+    signup_date DATE
+);
+
+-- ============================================================================
+-- TABLE 2: PRODUCTS
+-- ============================================================================
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(100) NOT NULL,
+    category VARCHAR(50),
+    price DECIMAL(10,2) NOT NULL
+);
+
+-- ============================================================================
+-- TABLE 3: ORDERS
+-- ============================================================================
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT NOT NULL,
+    product_id INT NOT NULL,
+    order_date DATE NOT NULL,
+    quantity INT NOT NULL,
+    total_amount DECIMAL(10,2) NOT NULL,
+    FOREIGN KEY (customer_id) REFERENCES customers(customer_id),
+    FOREIGN KEY (product_id) REFERENCES products(product_id)
+);
+
+-- Verify tables created
+SHOW TABLES;
